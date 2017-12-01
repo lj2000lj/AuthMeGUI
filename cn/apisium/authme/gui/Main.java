@@ -13,6 +13,7 @@ import com.comphenix.protocol.ProtocolManager;
 
 import cn.apisium.authme.gui.window.AnvilLoginWindow;
 import cn.apisium.authme.gui.window.LoginWindow;
+import cn.apisium.authme.gui.window.SignLoginWindow;
 import fr.xephi.authme.api.v3.AuthMeApi;
 
 public class Main extends JavaPlugin implements Listener {
@@ -31,7 +32,14 @@ public class Main extends JavaPlugin implements Listener {
 		}
 		this.saveDefaultConfig();
 		this.getServer().getPluginManager().registerEvents(this, this);
-		window = new AnvilLoginWindow(protocolManager, this);
+		String windowType = this.getConfig().getString("WindowType");
+		if (windowType.equalsIgnoreCase("sign")) {
+			window = new SignLoginWindow(protocolManager, this);
+		} else if (windowType.equalsIgnoreCase("anvil")) {
+			window = new AnvilLoginWindow(protocolManager, this);
+		} else {
+			window = new AnvilLoginWindow(protocolManager, this);
+		}
 		getLogger().info("AuthMe with GUI, Powered by Apisium.");
 	}
 
