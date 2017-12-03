@@ -80,34 +80,45 @@ public class AnvilLoginWindow extends LoginWindow {
 						}
 						Object byteBuf = packet.getModifier().readSafely(1);
 						try {
-							byte[] bytes = (byte[]) byteBuf.getClass().getDeclaredMethod("array", new Class<?>[0])
+							Class<?> byteBufClass = byteBuf.getClass();
+							boolean hasArray = (Boolean) byteBufClass.getDeclaredMethod("hasArray", new Class<?>[0])
 									.invoke(byteBuf, new Object[0]);
+							byte[] bytes;
+							if (hasArray) {
+								bytes = (byte[]) byteBufClass.getDeclaredMethod("array", new Class<?>[0])
+										.invoke(byteBuf, new Object[0]);
+							} else {
+								int length = (Integer) byteBufClass.getDeclaredMethod("readableBytes", new Class<?>[0])
+										.invoke(byteBuf, new Object[0]);
+								bytes = new byte[length];
+								int readerIndex = (Integer) byteBufClass
+										.getDeclaredMethod("readerIndex", new Class<?>[0])
+										.invoke(byteBuf, new Object[0]);
+								byteBufClass.getDeclaredMethod("getBytes", new Class<?>[] { int.class, byte[].class })
+										.invoke(byteBuf, new Object[] { readerIndex, bytes });
+							}
 							String contents;
 							contents = new String(bytes, StandardCharsets.UTF_8).substring(1);
 							playerInput.put(event.getPlayer().getName(), contents);
 
 						} catch (IllegalAccessException e) {
-							e.printStackTrace();
 						} catch (IllegalArgumentException e) {
-							e.printStackTrace();
 						} catch (InvocationTargetException e) {
-							e.printStackTrace();
 						} catch (NoSuchMethodException e) {
-							e.printStackTrace();
 						} catch (SecurityException e) {
-							e.printStackTrace();
 						}
 
 					}
 				});
 	}
 
-	private HashMap<String, String> playerInput = new HashMap<>();
-	private HashMap<String, Integer> nameMap = new HashMap<>();
+	private HashMap<String, String> playerInput = new HashMap<String, String>();
+	private HashMap<String, Integer> nameMap = new HashMap<String, Integer>();
 	private Random random = new Random();
 
+	@SuppressWarnings("deprecation")
 	@Override
-	public void openFor(Player player) throws InvocationTargetException {
+	public void openFor(final Player player) throws InvocationTargetException {
 		if (AuthMeApi.getInstance().isAuthenticated(player)) {
 			return;
 		}
@@ -118,27 +129,43 @@ public class AnvilLoginWindow extends LoginWindow {
 		} else {
 			key = nameMap.get(player.getName());
 		}
-		PacketContainer anvil = new PacketContainer(PacketType.Play.Server.OPEN_WINDOW);
-		PacketContainer slot = new PacketContainer(PacketType.Play.Server.SET_SLOT);
+		final PacketContainer anvil = new PacketContainer(PacketType.Play.Server.OPEN_WINDOW);
+		final PacketContainer slotAir = new PacketContainer(PacketType.Play.Server.SET_SLOT);
+		final PacketContainer slotHead = new PacketContainer(PacketType.Play.Server.SET_SLOT);
 		boolean registered = AuthMeApi.getInstance().isRegistered(player.getName());
-		slot.getIntegers().write(0, -1);
-		slot.getIntegers().write(1, -1);
-		slot.getItemModifier().write(0, new ItemStack(Material.AIR));
-		protocolManager.sendServerPacket(player, slot);
+		slotAir.getIntegers().write(0, -1);
+		slotAir.getIntegers().write(1, -1);
+		slotAir.getItemModifier().write(0, new ItemStack(Material.AIR));
 		anvil.getIntegers().write(0, key);
 		anvil.getStrings().write(0, "minecraft:anvil");
 		anvil.getChatComponents().write(0, WrappedChatComponent.fromText("µÇÂ¼"));
 		anvil.getIntegers().write(1, 0);
-		protocolManager.sendServerPacket(player, anvil);
-		slot.getIntegers().write(0, key);
-		slot.getIntegers().write(1, 0);
+		slotHead.getIntegers().write(0, key);
+		slotHead.getIntegers().write(1, 0);
 		ItemStack item = new ItemStack(Material.SKULL_ITEM, 1, (short) SkullType.PLAYER.ordinal());
 		SkullMeta skullMeta = (SkullMeta) item.getItemMeta();
-		skullMeta.setOwner(player.getName());
+		try {
+			skullMeta.setOwner(player.getName());
+			skullMeta.setOwningPlayer(player);
+		} catch (Throwable e) {
+		}
 		skullMeta.setDisplayName("ÊäÈëÃÜÂë" + (registered ? "µÇÂ¼" : "×¢²á"));
 		item.setItemMeta(skullMeta);
-		slot.getItemModifier().write(0, item);
-		protocolManager.sendServerPacket(player, slot);
+		slotHead.getItemModifier().write(0, item);
+		protocolManager.sendServerPacket(player, slotAir);
+		protocolManager.sendServerPacket(player, anvil);
+		Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
+
+			@Override
+			public void run() {
+				try {
+					protocolManager.sendServerPacket(player, slotHead);
+				} catch (InvocationTargetException e) {
+					e.printStackTrace();
+				}
+
+			}
+		}, 1L);
 	}
 
 }

@@ -1,6 +1,6 @@
 name: AuthMeGUI
 main: cn.apisium.authme.gui.Main
-version: 1.0.0
+version: @version@-@apiversion@
 website: https://www.apisium.cn
 author: Baleine_2000
 description: Add a sign gui for AuthMe
