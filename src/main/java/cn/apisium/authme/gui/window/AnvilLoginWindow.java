@@ -2,13 +2,16 @@ package cn.apisium.authme.gui.window;
 
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.SkullType;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.Plugin;
@@ -22,7 +25,9 @@ import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.reflect.StructureModifier;
 import com.comphenix.protocol.wrappers.WrappedChatComponent;
 
+import cn.apisium.authme.gui.variable.Variables;
 import fr.xephi.authme.api.v3.AuthMeApi;
+import fr.xephi.authme.events.LoginEvent;
 
 public class AnvilLoginWindow extends LoginWindow {
 
@@ -32,34 +37,40 @@ public class AnvilLoginWindow extends LoginWindow {
 				new PacketAdapter(plugin, ListenerPriority.NORMAL, PacketType.Play.Client.WINDOW_CLICK) {
 					@Override
 					public void onPacketReceiving(PacketEvent event) {
-						if (event.getPacketType() != PacketType.Play.Client.WINDOW_CLICK) {
-							return;
-						}
-						PacketContainer packet = event.getPacket();
-						StructureModifier<Integer> integers = packet.getIntegers();
-						int windowID = integers.read(0);
-						if (windowID != nameMap.get(event.getPlayer().getName())) {
-							return;
-						}
-						int slot = integers.read(1);
-						if (slot == 2) {
-							String password = playerInput.containsKey(event.getPlayer().getName())
-									? playerInput.get(event.getPlayer().getName())
-									: "";
-							boolean registered = AuthMeApi.getInstance().isRegistered(event.getPlayer().getName());
-							password = password.startsWith(" ‰»Î√‹¬Î" + (registered ? "µ«¬º" : "◊¢≤·"))
-									? password.substring((" ‰»Î√‹¬Î" + (registered ? "µ«¬º" : "◊¢≤·")).length())
-									: password;
-							if (!registered & !password.isEmpty()) {
-								AuthMeApi.getInstance().registerPlayer(event.getPlayer().getName(), password);
-							}
-							Bukkit.getPluginCommand("login").execute(event.getPlayer(), "login",
-									new String[] { password });
-						}
 						try {
-							AnvilLoginWindow.this.openFor(event.getPlayer());
-						} catch (InvocationTargetException e) {
-							throw new RuntimeException(e);
+							if (event.getPacketType() != PacketType.Play.Client.WINDOW_CLICK) {
+								return;
+							}
+							PacketContainer packet = event.getPacket();
+							StructureModifier<Integer> integers = packet.getIntegers();
+							int windowID = integers.read(0);
+							if (windowID != nameMap.get(event.getPlayer().getName())) {
+								return;
+							}
+							int slot = integers.read(1);
+							if (slot == 2 || slot == 0) {
+								String password = playerInput.containsKey(event.getPlayer().getName())
+										? playerInput.get(event.getPlayer().getName())
+										: "";
+								boolean registered = AuthMeApi.getInstance().isRegistered(event.getPlayer().getName());
+								String start = AnvilLoginWindow.this.getInfoFor(event.getPlayer(),
+										Variables.anvilInfo.get(0));
+								password = password.startsWith(start) ? password.substring(start.length()) : password;
+								if (!registered & !password.isEmpty()) {
+									AuthMeApi.getInstance().registerPlayer(event.getPlayer().getName(), password);
+								}
+								Bukkit.getPluginCommand("login").execute(event.getPlayer(), "login",
+										new String[] { password });
+							}
+							try {
+								AnvilLoginWindow.this.openFor(event.getPlayer());
+							} catch (InvocationTargetException e) {
+								throw new RuntimeException(e);
+							}
+						} catch (Throwable e) {
+							if (Variables.debug)
+								e.printStackTrace();
+							// To avoid some strange issues
 						}
 					}
 				});
@@ -67,47 +78,54 @@ public class AnvilLoginWindow extends LoginWindow {
 				new PacketAdapter(plugin, ListenerPriority.NORMAL, PacketType.Play.Client.CUSTOM_PAYLOAD) {
 					@Override
 					public void onPacketReceiving(PacketEvent event) {
-						if (event.getPacketType() != PacketType.Play.Client.CUSTOM_PAYLOAD) {
-							return;
-						}
-						if (AuthMeApi.getInstance().isAuthenticated(event.getPlayer())) {
-							return;
-						}
-						PacketContainer packet = event.getPacket();
-						StructureModifier<String> strings = packet.getStrings();
-						if (!strings.read(0).equals("MC|ItemName")) {
-							return;
-						}
-						Object byteBuf = packet.getModifier().readSafely(1);
 						try {
-							Class<?> byteBufClass = byteBuf.getClass();
-							boolean hasArray = (Boolean) byteBufClass.getDeclaredMethod("hasArray", new Class<?>[0])
-									.invoke(byteBuf, new Object[0]);
-							byte[] bytes;
-							if (hasArray) {
-								bytes = (byte[]) byteBufClass.getDeclaredMethod("array", new Class<?>[0])
-										.invoke(byteBuf, new Object[0]);
-							} else {
-								int length = (Integer) byteBufClass.getDeclaredMethod("readableBytes", new Class<?>[0])
-										.invoke(byteBuf, new Object[0]);
-								bytes = new byte[length];
-								int readerIndex = (Integer) byteBufClass
-										.getDeclaredMethod("readerIndex", new Class<?>[0])
-										.invoke(byteBuf, new Object[0]);
-								byteBufClass.getDeclaredMethod("getBytes", new Class<?>[] { int.class, byte[].class })
-										.invoke(byteBuf, new Object[] { readerIndex, bytes });
+							if (event.getPacketType() != PacketType.Play.Client.CUSTOM_PAYLOAD) {
+								return;
 							}
-							String contents;
-							contents = new String(bytes, StandardCharsets.UTF_8).substring(1);
-							playerInput.put(event.getPlayer().getName(), contents);
+							if (AuthMeApi.getInstance().isAuthenticated(event.getPlayer())) {
+								return;
+							}
+							PacketContainer packet = event.getPacket();
+							StructureModifier<String> strings = packet.getStrings();
+							if (!strings.read(0).equals("MC|ItemName")) {
+								return;
+							}
+							Object byteBuf = packet.getModifier().readSafely(1);
+							try {
+								Class<?> byteBufClass = byteBuf.getClass();
+								boolean hasArray = (Boolean) byteBufClass.getDeclaredMethod("hasArray", new Class<?>[0])
+										.invoke(byteBuf, new Object[0]);
+								byte[] bytes;
+								if (hasArray) {
+									bytes = (byte[]) byteBufClass.getDeclaredMethod("array", new Class<?>[0])
+											.invoke(byteBuf, new Object[0]);
+								} else {
+									int length = (Integer) byteBufClass
+											.getDeclaredMethod("readableBytes", new Class<?>[0])
+											.invoke(byteBuf, new Object[0]);
+									bytes = new byte[length];
+									int readerIndex = (Integer) byteBufClass
+											.getDeclaredMethod("readerIndex", new Class<?>[0])
+											.invoke(byteBuf, new Object[0]);
+									byteBufClass
+											.getDeclaredMethod("getBytes", new Class<?>[] { int.class, byte[].class })
+											.invoke(byteBuf, new Object[] { readerIndex, bytes });
+								}
+								String contents;
+								contents = new String(bytes, StandardCharsets.UTF_8).substring(1);
+								playerInput.put(event.getPlayer().getName(), contents);
 
-						} catch (IllegalAccessException e) {
-						} catch (IllegalArgumentException e) {
-						} catch (InvocationTargetException e) {
-						} catch (NoSuchMethodException e) {
-						} catch (SecurityException e) {
+							} catch (IllegalAccessException e) {
+							} catch (IllegalArgumentException e) {
+							} catch (InvocationTargetException e) {
+							} catch (NoSuchMethodException e) {
+							} catch (SecurityException e) {
+							}
+						} catch (Throwable e) {
+							if (Variables.debug)
+								e.printStackTrace();
+							// To avoid some strange issues
 						}
-
 					}
 				});
 	}
@@ -132,7 +150,6 @@ public class AnvilLoginWindow extends LoginWindow {
 		final PacketContainer anvil = new PacketContainer(PacketType.Play.Server.OPEN_WINDOW);
 		final PacketContainer slotAir = new PacketContainer(PacketType.Play.Server.SET_SLOT);
 		final PacketContainer slotHead = new PacketContainer(PacketType.Play.Server.SET_SLOT);
-		boolean registered = AuthMeApi.getInstance().isRegistered(player.getName());
 		slotAir.getIntegers().write(0, -1);
 		slotAir.getIntegers().write(1, -1);
 		slotAir.getItemModifier().write(0, new ItemStack(Material.AIR));
@@ -149,7 +166,9 @@ public class AnvilLoginWindow extends LoginWindow {
 			skullMeta.setOwningPlayer(player);
 		} catch (Throwable e) {
 		}
-		skullMeta.setDisplayName(" ‰»Î√‹¬Î" + (registered ? "µ«¬º" : "◊¢≤·"));
+		List<String> lines = this.getInfoFor(player);
+		skullMeta.setDisplayName(lines.get(0));
+		skullMeta.setLore(lines.subList(1, lines.size()));
 		item.setItemMeta(skullMeta);
 		slotHead.getItemModifier().write(0, item);
 		protocolManager.sendServerPacket(player, slotAir);
@@ -166,6 +185,26 @@ public class AnvilLoginWindow extends LoginWindow {
 
 			}
 		}, 1L);
+	}
+
+	@EventHandler
+	public void onAuthed(LoginEvent event) {
+		final PacketContainer closeWindow = new PacketContainer(PacketType.Play.Server.CLOSE_WINDOW);
+		int key = nameMap.get(event.getPlayer().getName());
+		closeWindow.getIntegers().write(0, key);
+		try {
+			protocolManager.sendServerPacket(event.getPlayer(), closeWindow);
+		} catch (InvocationTargetException e) {
+		}
+	}
+
+	@Override
+	public List<String> getInfoFor(Player player) {
+		List<String> info = new ArrayList<String>();
+		for (String line : Variables.anvilInfo) {
+			info.add(getInfoFor(player, line));
+		}
+		return info;
 	}
 
 }
