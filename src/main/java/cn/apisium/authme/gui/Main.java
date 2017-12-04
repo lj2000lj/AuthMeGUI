@@ -75,18 +75,18 @@ public class Main extends JavaPlugin implements Listener {
 				e.printStackTrace();
 			}
 		}
+		this.applyScript();
 		this.saveConfig();
 		return this;
 	}
 
 	public String capitalFirst(String string) {
-		// 不说了先给想出这个函数的大佬致敬一下
 		char[] cs = string.toCharArray();
 		cs[0] -= 32;
 		return String.valueOf(cs);
 	}
 
-	public void fillInVariables() {
+	public void applyScript() {
 		try {
 			BufferedReader reader = new BufferedReader(new FileReader(Variables.scriptPath));
 			try {
