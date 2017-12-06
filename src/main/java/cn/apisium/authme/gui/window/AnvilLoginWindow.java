@@ -179,7 +179,9 @@ public class AnvilLoginWindow extends LoginWindow {
 			public void run() {
 				try {
 					protocolManager.sendServerPacket(player, slotHead);
-					if (!AuthMeApi.getInstance().isAuthenticated(player))
+					String input = playerInput.get(player.getName());
+					if (!AuthMeApi.getInstance().isAuthenticated(player)
+							&& (input == null || (input.isEmpty() && !input.equals(Variables.anvilInfo.get(0)))))
 						Bukkit.getScheduler().runTaskLater(plugin, this, Variables.anvilLoginDelay);
 				} catch (InvocationTargetException e) {
 					e.printStackTrace();
