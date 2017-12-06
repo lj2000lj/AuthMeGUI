@@ -6,6 +6,7 @@ import java.util.List;
 public class Variables {
 	public static boolean debug = false;
 	public static String windowType = "anvil";
+	public static int anvilLoginDelay = 5;
 	public static int signLoginLine = 3;
 	public static String scriptEngine = "js";
 	public static String scriptPath = "";

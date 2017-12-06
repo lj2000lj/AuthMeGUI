@@ -173,18 +173,21 @@ public class AnvilLoginWindow extends LoginWindow {
 		slotHead.getItemModifier().write(0, item);
 		protocolManager.sendServerPacket(player, slotAir);
 		protocolManager.sendServerPacket(player, anvil);
-		Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
+		Runnable sendSlot = new Runnable() {
 
 			@Override
 			public void run() {
 				try {
 					protocolManager.sendServerPacket(player, slotHead);
+					if (!AuthMeApi.getInstance().isAuthenticated(player))
+						Bukkit.getScheduler().runTaskLater(plugin, this, Variables.anvilLoginDelay);
 				} catch (InvocationTargetException e) {
 					e.printStackTrace();
 				}
 
 			}
-		}, 1L);
+		};
+		Bukkit.getScheduler().runTaskLater(plugin, sendSlot, Variables.anvilLoginDelay);
 	}
 
 	@EventHandler
