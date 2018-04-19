@@ -87,6 +87,10 @@ shadowJar {
     }
 }
 
+tasks.withType(JavaCompile) {  
+    options.encoding = "UTF-8"  
+}  
+
 task deploy(type: Copy, dependsOn: ['build']) {
     from "${buildDir}/libs"
     into "final/"

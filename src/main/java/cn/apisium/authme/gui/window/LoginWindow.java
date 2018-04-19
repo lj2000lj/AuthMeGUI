@@ -20,8 +20,8 @@ import fr.xephi.authme.api.v3.AuthMeApi;
 
 public abstract class LoginWindow implements Listener {
 
-	protected final ProtocolManager protocolManager;
-	protected final Plugin plugin;
+	protected ProtocolManager protocolManager;
+	protected Plugin plugin;
 
 	public LoginWindow(ProtocolManager protocolManager, Plugin plugin) {
 		this.protocolManager = protocolManager;

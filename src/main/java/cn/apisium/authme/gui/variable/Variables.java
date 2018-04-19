@@ -12,8 +12,8 @@ public class Variables {
 	public static String scriptPath = "";
 	@NonConfig
 	public static String script = "";
-	public static String registeredStatueMessage = "µÇÂ¼";
-	public static String unregisteredStatueMessage = "×¢²á";
+	public static String registeredStatueMessage = "ç™»å½•";
+	public static String unregisteredStatueMessage = "æ³¨å†Œ";
 	public static String statueVariable = "%statue%";
 	public static String playerVariable = "%player%";
 	public static String playerCustomVariable = "%player_custom%";
@@ -22,7 +22,7 @@ public class Variables {
 	public static String playerLevelVariable = "%player_level%";
 	public static String serverIpVariable = "%server_ip%";
 	public static List<String> anvilInfo = Arrays
-			.asList(new String[] { "ÊäÈëÃÜÂë" + statueVariable + "¡ìk", "Íê³Éºóµã»÷Í·Ïñ¼´¿ÉµÇÂ¼" });
+			.asList(new String[] { "è¾“å…¥å¯†ç " + statueVariable + "Â§k", "å®Œæˆåç‚¹å‡»å¤´åƒå³å¯ç™»å½•" });
 	public static List<String> signInfo = Arrays
-			.asList(new String[] { playerVariable, "ÇëÔÚÏÂÒ»ĞĞÊäÈëÃÜÂë", "¡ìk", "µã»÷Íê³É½øĞĞ" + statueVariable });
+			.asList(new String[] { playerVariable, "è¯·åœ¨ä¸‹ä¸€è¡Œè¾“å…¥å¯†ç ", "Â§k", "ç‚¹å‡»å®Œæˆè¿›è¡Œ" + statueVariable });
 }

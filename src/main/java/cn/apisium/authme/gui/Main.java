@@ -8,9 +8,11 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 
+import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -35,6 +37,7 @@ public class Main extends JavaPlugin implements Listener {
 
 	@Override
 	public void onEnable() {
+		protocolManager = ProtocolLibrary.getProtocolManager();
 		if (!this.getDataFolder().exists()) {
 			this.getDataFolder().mkdirs();
 		}
@@ -82,7 +85,7 @@ public class Main extends JavaPlugin implements Listener {
 
 	public String capitalFirst(String string) {
 		char[] cs = string.toCharArray();
-		cs[0] -= 32;
+		cs[0] = Character.toUpperCase(cs[0]);
 		return String.valueOf(cs);
 	}
 
@@ -114,7 +117,27 @@ public class Main extends JavaPlugin implements Listener {
 
 	@Override
 	public void onDisable() {
+		protocolManager.removePacketListeners(this);
 		getLogger().info("AuthMeGUI disabled.");
+	}
+
+	@EventHandler(priority = EventPriority.MONITOR)
+	public void onJoin(final PlayerJoinEvent event) {
+		if (AuthMeApi.getInstance().isAuthenticated(event.getPlayer())) {
+			return;
+		}
+		Bukkit.getScheduler().runTaskLater(this, new Runnable() {
+
+			@Override
+			public void run() {
+				try {
+					window.openFor(event.getPlayer());
+				} catch (InvocationTargetException e) {
+					throw new RuntimeException(e);
+				}
+
+			}
+		}, Variables.anvilLoginDelay);
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR)
