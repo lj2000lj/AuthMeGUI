@@ -163,6 +163,9 @@ public class AnvilLoginWindow extends LoginWindow {
 		SkullMeta skullMeta = (SkullMeta) item.getItemMeta();
 		try {
 			skullMeta.setOwner(player.getName());
+		} catch (Throwable e) {
+		}
+		try {
 			skullMeta.setOwningPlayer(player);
 		} catch (Throwable e) {
 		}
@@ -178,6 +181,7 @@ public class AnvilLoginWindow extends LoginWindow {
 			@Override
 			public void run() {
 				try {
+					System.out.println("anvil");
 					protocolManager.sendServerPacket(player, slotHead);
 					String input = playerInput.get(player.getName());
 					if (!AuthMeApi.getInstance().isAuthenticated(player)

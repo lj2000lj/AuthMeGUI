@@ -39,7 +39,7 @@ repositories {
         url "http://repo.dmulloy2.net/content/groups/public"
     }
     maven {
-        url "http://ci.xephi.fr/plugin/repository/everything"
+        url "http://repo.codemc.org/repository/maven-public/"
     }
 }
 
