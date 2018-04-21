@@ -59,6 +59,7 @@ dependencies {
 }
 
 processResources {
+    delete "${buildDir}/resources"
     filter ReplaceTokens, tokens: [
             "apiversion": project.property("apiversion"),
             "version"   : project.property("version")

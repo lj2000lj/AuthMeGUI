@@ -42,11 +42,7 @@ public class AnvilLoginWindow extends LoginWindow {
 				PacketContainer packet = event.getPacket();
 				StructureModifier<Integer> integers = packet.getIntegers();
 				int windowID = integers.read(0);
-				if (!nameMap.containsKey(event.getPlayer().getName())) {
-					closeFor(event.getPlayer(), windowID);
-					return;
-				}
-				if (windowID != nameMap.get(event.getPlayer().getName())) {
+				if (windowID != event.getPlayer().getName().hashCode() % 100 + 1) {
 					return;
 				}
 				int slot = integers.read(1);
@@ -132,12 +128,11 @@ public class AnvilLoginWindow extends LoginWindow {
 	}
 
 	private HashMap<String, String> playerInput = new HashMap<String, String>();
-	private HashMap<String, Integer> nameMap = new HashMap<String, Integer>();
 	private HashMap<String, BukkitTask> taskMap = new HashMap<String, BukkitTask>();
 
-	public void closeFor(final Player player, int windowID) {
+	public void closeFor(final Player player) {
 		final PacketContainer closeWindow = new PacketContainer(PacketType.Play.Server.CLOSE_WINDOW);
-		closeWindow.getIntegers().write(0, windowID);
+		closeWindow.getIntegers().write(0, player.getName().hashCode() % 100 + 1);
 		try {
 			protocolManager.sendServerPacket(player, closeWindow);
 		} catch (InvocationTargetException e) {
@@ -154,19 +149,15 @@ public class AnvilLoginWindow extends LoginWindow {
 		if (AuthMeApi.getInstance().isAuthenticated(player)) {
 			return;
 		}
-		final int key;
-		if (!nameMap.containsKey(player.getName())) {
-			key = player.getName().hashCode() % 100;
-			nameMap.put(player.getName(), key);
-		} else {
-			key = nameMap.get(player.getName());
-		}
+		final int key = player.getName().hashCode() % 100 + 1;
 		if (taskMap.containsKey(player.getName())) {
 			taskMap.get(player.getName()).cancel();
 		}
 		final PacketContainer anvil = new PacketContainer(PacketType.Play.Server.OPEN_WINDOW);
 		final PacketContainer slotAir = new PacketContainer(PacketType.Play.Server.SET_SLOT);
-		final PacketContainer slotHead = new PacketContainer(PacketType.Play.Server.SET_SLOT);
+		// final PacketContainer slotHead = new
+		// PacketContainer(PacketType.Play.Server.SET_SLOT);
+		final PacketContainer slotHead = new PacketContainer(PacketType.Play.Server.WINDOW_ITEMS);
 		slotAir.getIntegers().write(0, -1);
 		slotAir.getIntegers().write(1, -1);
 		slotAir.getItemModifier().write(0, new ItemStack(Material.AIR));
@@ -174,28 +165,41 @@ public class AnvilLoginWindow extends LoginWindow {
 		anvil.getStrings().write(0, "minecraft:anvil");
 		anvil.getChatComponents().write(0, WrappedChatComponent.fromText(getInfoFor(player, Variables.statueVariable)));
 		anvil.getIntegers().write(1, 0);
-		slotHead.getIntegers().write(0, key);
-		slotHead.getIntegers().write(1, 0);
+		// slotHead.getIntegers().write(0, key);
+		// slotHead.getIntegers().write(1, 0);
 		ItemStack item = new ItemStack(Material.SKULL_ITEM, 1, (short) SkullType.PLAYER.ordinal());
 		SkullMeta skullMeta = (SkullMeta) item.getItemMeta();
+		boolean methodExist = false;
 		try {
 			for (Method method : skullMeta.getClass().getDeclaredMethods()) {
-				if (method.getName().equals("setOwner") && !method.isAnnotationPresent(Deprecated.class)) {
-					skullMeta.setOwner(player.getName());
-				}
 				if (method.getName().equals("setOwningPlayer")) {
-					skullMeta.setOwningPlayer(player);
+					methodExist = true;
 				}
 			}
 		} catch (Throwable e) {
 			if (Variables.debug)
 				e.printStackTrace();
 		}
+		if (methodExist) {
+			skullMeta.setOwningPlayer(player);
+		} else {
+			skullMeta.setOwner(player.getName());
+		}
 		List<String> lines = this.getInfoFor(player);
 		skullMeta.setDisplayName(lines.get(0));
 		skullMeta.setLore(lines.subList(1, lines.size()));
 		item.setItemMeta(skullMeta);
-		slotHead.getItemModifier().write(0, item);
+		// slotHead.getItemModifier().write(0, item);
+		slotHead.getIntegers().write(0, key);
+		List<ItemStack> list = new ArrayList<ItemStack>();
+		list.add(item);
+		try {
+			slotHead.getItemListModifier().write(0, list);
+		} catch (Throwable e) {
+			if (Variables.debug)
+				e.printStackTrace();
+			slotHead.getItemArrayModifier().write(0, new ItemStack[] { item });
+		}
 		protocolManager.sendServerPacket(player, slotAir);
 		protocolManager.sendServerPacket(player, anvil);
 		Runnable sendSlot = new Runnable() {
@@ -210,11 +214,15 @@ public class AnvilLoginWindow extends LoginWindow {
 						count++;
 					else {
 						playerInput.remove(player.getName());
-						nameMap.remove(player.getName());
+						if (taskMap.containsKey(player.getName())) {
+							taskMap.get(player.getName()).cancel();
+						}
 						taskMap.remove(player.getName());
 						protocolManager = ProtocolLibrary.getProtocolManager();
-						closeFor(player, key);
-						openFor(player);
+						if (player.isOnline()) {
+							closeFor(player);
+							openFor(player);
+						}
 						return;
 					}
 					if (!AuthMeApi.getInstance().isAuthenticated(player)
@@ -232,7 +240,7 @@ public class AnvilLoginWindow extends LoginWindow {
 
 	@EventHandler
 	public void onAuthed(LoginEvent event) {
-		closeFor(event.getPlayer(), nameMap.get(event.getPlayer().getName()));
+		closeFor(event.getPlayer());
 	}
 
 	@Override
